@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load subtract %}
+
+{% block titles %}Home page{% endblock %}
+
+{% block content %}
+    {% if user.is_authenticated or request.user.is_superuser %}
+        Hello, {{ user }}!
+        <p></p>
+        <a href="{% url 'sessions_for_tomorrow' %}"> Sessions for tomorrow </a><br>
+        <a href="{% url 'logout' %}">Logout</a><br>
+        <a href="{% url 'purchases' %}">My purchase</a><br>
+        {% if user.is_superuser %}
+            <a href="{% url 'create_cinema_hall' %}">Create hall</a>
+            <a href="{% url 'create_session' %}">Create session</a>
+        {% endif %}
+        <div>
+            <form>
+                {{ filter }}
+                <input type="submit" value=filter>
+            </form>
+        </div>
+    {% else %}
+        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'register' %}">Register</a>
+    {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color: red;">{{ message|safe }}</p>
+        {% endfor %}
+    {% endif %}
+    {% for session in sessions %}
+        <div>
+            <form method="post" action="{% url 'create_ticket' %}">
+                {% csrf_token %}
+                <h3><br></h3>
+                <p>Hall: {{ session.hall.name }}
+                    {% if user.is_superuser %}
+                        <a href="{% url 'update_cinema_hall' session.hall.pk %}">Change hall</a><br>
+                    {% endif %}
+                    <p>Free places: {{ session.hall.size|sub:session.total }}</p>
+                    <p>Time: {{ session.start_time|time:"H:i" }} - {{ session.end_time|time:"H:i" }}</p>
+                    <p>Show date: {{ session.get_show_date }}</p>
+                    <p>Ticket price: {{ session.price }}</p>
+                    {% if user.is_authenticated %}
+                        {{ quantity.quantity }}
+                        <input type="hidden" name="session" value='{{ session.pk }}'>
+                        <input type="submit" value="Buy">
+                    {% endif %}
+                    {% if user.is_superuser %}
+                        <a href="{% url 'update_session' session.pk %}">Change session</a>
+                    {% endif %}
+            </form>
+        </div>
+    {% endfor %}
+    {% if page_obj.paginator.num_pages > 1 %}
+        {% for num in page_obj.paginator.page_range %}
+            {% ifequal num page_obj.number %}
+                <span class="current"><b>{{ num }}</b></span>
+            {% else %}
+                <a href="?page={{ num }}"> {{ num }}</a>
+            {% endifequal %}
+        {% endfor %}
+    {% endif %}
+{% endblock %}
