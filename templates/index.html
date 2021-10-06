@@ -4,26 +4,46 @@
 {% block titles %}Home page{% endblock %}
 
 {% block content %}
-    {% if user.is_authenticated or request.user.is_superuser %}
+    {% if user.is_authenticated and not user.is_superuser %}
         Hello, {{ user }}!
         <p></p>
         <a href="{% url 'sessions_for_tomorrow' %}"> Sessions for tomorrow </a><br>
         <a href="{% url 'logout' %}">Logout</a><br>
         <a href="{% url 'purchases' %}">My purchase</a><br>
-        {% if user.is_superuser %}
-            <a href="{% url 'create_cinema_hall' %}">Create hall</a>
-            <a href="{% url 'create_session' %}">Create session</a>
-        {% endif %}
+
         <div>
             <form>
                 {{ filter }}
                 <input type="submit" value=filter>
             </form>
         </div>
-    {% else %}
+    {% endif %}
+
+    {% if user.is_anonymous %}
+        <p></p>
         <a href="{% url 'login' %}">Login</a>
         <a href="{% url 'register' %}">Register</a>
+        <a href="{% url 'sessions_for_tomorrow' %}"> Sessions for tomorrow </a><br>
     {% endif %}
+
+    {% if user.is_superuser %}
+        Hello, {{ user }}!
+        <p></p>
+        <a href="{% url 'sessions_for_tomorrow' %}"> Sessions for tomorrow </a><br>
+        <a href="{% url 'logout' %}">Logout</a><br>
+        <a href="{% url 'create_cinema_hall' %}">Create hall</a>
+        <a href="{% url 'create_session' %}">Create session</a>
+        <div>
+            <form>
+                {{ filter }}
+                <input type="submit" value=filter>
+            </form>
+        </div>
+
+        {% endif %}
+
+
+
     {% if messages %}
         {% for message in messages %}
             <p style="color: red;">{{ message|safe }}</p>
@@ -42,13 +62,15 @@
                     <p>Time: {{ session.start_time|time:"H:i" }} - {{ session.end_time|time:"H:i" }}</p>
                     <p>Show date: {{ session.get_show_date }}</p>
                     <p>Ticket price: {{ session.price }}</p>
-                    {% if user.is_authenticated %}
+                    {% if user.is_authenticated and not user.is_superuser %}
                         {{ quantity.quantity }}
                         <input type="hidden" name="session" value='{{ session.pk }}'>
                         <input type="submit" value="Buy">
                     {% endif %}
                     {% if user.is_superuser %}
+
                         <a href="{% url 'update_session' session.pk %}">Change session</a>
+
                     {% endif %}
             </form>
         </div>

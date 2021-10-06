@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from cinemaapp.models import MyUser, CinemaHall, Session, Ticket
 
 
-def change_status(modeladmin, request, queryset):
+def change_status(queryset):
     for obj in queryset:
         obj.is_staff = not obj.is_staff
     MyUser.objects.bulk_update(queryset, ['is_staff'])

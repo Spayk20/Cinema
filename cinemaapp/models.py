@@ -49,6 +49,7 @@ class Session(models.Model):
     start_date = models.DateField(verbose_name='Start date')
     end_date = models.DateField(verbose_name='End date')
     price = models.PositiveSmallIntegerField(verbose_name='Ticket price')
+    free_seats = models.PositiveSmallIntegerField(default=0)
     status = models.BooleanField(default=True, verbose_name='Status', blank=True)
 
     @property

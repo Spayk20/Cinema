@@ -79,5 +79,6 @@ class UpdateSessionForm(forms.ModelForm):
 
 
 class FilterForm(forms.Form):
-    filter_price = forms.BooleanField(label='Filter by price', required=False)
+    filter_price_lh = forms.BooleanField(label='Filter from lower price', required=False)
+    filter_price_hl = forms.BooleanField(label='Filter from higher price', required=False)
     filter_start_time = forms.BooleanField(label='Filter by start', required=False)

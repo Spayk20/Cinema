@@ -11,6 +11,8 @@ from datetime import timedelta
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Sum
 
+from cinemaapp.templatetags.subtract import sub
+
 
 class UserLoginView(LoginView):
     success_url = reverse_lazy('index')
@@ -50,23 +52,34 @@ class SessionListView(ListView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            price = self.request.GET.get('filter_price')
+            price_lh = self.request.GET.get('filter_price_lh')
+            price_hl = self.request.GET.get('filter_price_hl')
             start_time = self.request.GET.get('filter_start_time')
-            if price and start_time:
+
+            if price_lh and start_time:
                 return Session.objects.filter(
                     status=True,
                     end_date__gte=timezone.now().date(),
-                    start_date__lte=timezone.now().date()).order_by('price', 'start_time').annotate(total=Sum('session_tickets__quantity'))
-            elif price:
+                    start_date__lte=timezone.now().date()).order_by('price', 'start_time').annotate(
+                    total=Sum('session_tickets__quantity'))
+            elif price_lh:
                 return Session.objects.filter(
                     status=True,
                     end_date__gte=timezone.now().date(),
-                    start_date__lte=timezone.now().date()).order_by('price').annotate(total=Sum('session_tickets__quantity'))
+                    start_date__lte=timezone.now().date()).order_by('price').annotate(
+                    total=Sum('session_tickets__quantity'))
+            elif price_hl:
+                return Session.objects.filter(
+                    status=True,
+                    end_date__gte=timezone.now().date(),
+                    start_date__lte=timezone.now().date()).order_by('-price').annotate(
+                    total=Sum('session_tickets__quantity'))
             elif start_time:
                 return Session.objects.filter(
                     status=True,
                     end_date__gte=timezone.now().date(),
-                    start_date__lte=timezone.now().date()).order_by('start_time').annotate(total=Sum('session_tickets__quantity'))
+                    start_date__lte=timezone.now().date()).order_by('start_time').annotate(
+                    total=Sum('session_tickets__quantity'))
         return Session.objects.filter(
             status=True,
             end_date__gte=timezone.now().date(),
@@ -99,20 +112,23 @@ class CreateTicketView(LoginRequiredMixin, CreateView):
     template_name = 'index.html'
 
     def form_valid(self, form):
-        object = form.save(commit=False)
+        obj_tct = form.save(commit=False)
         quantity = int(form.data['quantity'])
         user = self.request.user
-        object.customer = user
+        obj_tct.customer = user
         session = Session.objects.get(id=self.request.POST['session'])
-        object.session = session
+        obj_tct.session = session
         hall = session.hall
         total_quantity = session.session_tickets.aggregate(Sum('quantity'))['quantity__sum']
+
         if not total_quantity:
             total_quantity = 0
         free_places = hall.size - total_quantity
         if free_places < quantity:
             messages.error(self.request, f'Мест не хватает! Свободных мест: {free_places}')
             return HttpResponseRedirect(self.success_url)
+        session.free_seats = free_places
+        session.save()
         user.total_price += quantity * session.price
         user.save()
         return super().form_valid(form=form)
@@ -137,12 +153,7 @@ class UpdateCinemaHallView(PermissionRequiredMixin, UserPassesTestMixin, UpdateV
     template_name = 'update_cinema_hall.html'
 
     def test_func(self):
-        sessions = self.get_object().sessions.filter(status=True)
-        if sessions:
-            for session in sessions:
-                if session.session_tickets.exists():
-                    return False
-        return True
+        return not any(s.session_tickets.exists() for s in self.get_object().sessions.filter(status=True))
 
 
 class UpdateSessionView(PermissionRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -174,23 +185,32 @@ class SessionForTomorrowListView(ListView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            price = self.request.GET.get('filter_price')
+            price_lh = self.request.GET.get('filter_price_lh')
+            price_hl = self.request.GET.get('filter_price_hl')
             start_time = self.request.GET.get('filter_start_time')
-            if price and start_time:
+            if price_lh and start_time:
                 return Session.objects.filter(
                     status=True,
                     end_date__gte=timezone.now().date() + timedelta(days=1),
                     start_date__lte=timezone.now().date() + timedelta(days=1)).order_by('price', 'start_time').annotate(
                     total=Sum('session_tickets__quantity'))
-            elif price:
-                return Session.objects.filter(status=True, end_date__gte=timezone.now().date() + timedelta(days=1),
+            elif price_lh:
+                return Session.objects.filter(
+                    status=True, end_date__gte=timezone.now().date() + timedelta(days=1),
                     start_date__lte=timezone.now().date() + timedelta(days=1)).order_by('price').annotate(
+                    total=Sum('session_tickets__quantity'))
+            elif price_hl:
+                return Session.objects.filter(
+                    status=True,
+                    end_date__gte=timezone.now().date(),
+                    start_date__lte=timezone.now().date()).order_by('-price').annotate(
                     total=Sum('session_tickets__quantity'))
             elif start_time:
                 return Session.objects.filter(
                     status=True,
                     end_date__gte=timezone.now().date() + timedelta(days=1),
-                    start_date__lte=timezone.now().date() + timedelta(days=1)).order_by('start_time').annotate(total=Sum('session_tickets__quantity'))
+                    start_date__lte=timezone.now().date() + timedelta(days=1)).order_by('start_time').annotate(
+                    total=Sum('session_tickets__quantity'))
         return Session.objects.filter(
             status=True,
             end_date__gte=timezone.now().date() + timedelta(days=1),
